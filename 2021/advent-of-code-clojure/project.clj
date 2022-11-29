@@ -5,7 +5,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [net.mikera/core.matrix "0.62.0"]
-                 [com.taoensso/tufte "2.2.0"]]
+                 [orchestra/orchestra "2021.01.01-1"]]
   :main ^:skip-aot advent-of-code.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
