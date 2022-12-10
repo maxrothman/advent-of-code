@@ -8,3 +8,14 @@
   (map #(map f %) coll))
 
 (defn descending [x y] (compare y x))
+
+(defn spy
+  ([x]
+   (prn x)
+   x)
+  ([msg x]
+   (prn msg x)
+   x))
+
+(defmacro as->> [& form]
+  `(as-> ~(last form) ~@(butlast form)))
