@@ -1,6 +1,7 @@
 (ns clojure-aoc.day9
-  (:require [clojure-aoc.util :refer [as->> spy]]
+  (:require [clojure-aoc.util :refer [as->>]]
             [clojure.java.io :as io]
+            [clojure.math :as math]
             [clojure.string :as str]))
 
 (defn visualize [symbols points]
@@ -37,10 +38,9 @@ R 2")
        (map (juxt (comp parse-long last) (comp parse-dir first)))
        (mapcat #(apply repeat %))))
 (comment
-  (parse (str/split-lines input))
-  )
+  (parse (str/split-lines input)))
 
-(defn step [[hpos tpos] dir] 
+(defn step [[hpos tpos] dir]
   (let [new-hpos (map + hpos dir)]
     [new-hpos
      (if (->> (map - new-hpos tpos)
@@ -49,8 +49,7 @@ R 2")
        (map - new-hpos dir)
        tpos)]))
 (comment
-  (step '(4 0) [5 0] '([-1 0] [-1 0])) 
-  )
+  (step '(4 0) [5 0] '([-1 0] [-1 0])))
 
 (defn simulate [hpos tpos actions]
   (reductions step [hpos tpos] actions))
@@ -68,7 +67,6 @@ R 2")
          set
          count))
   ;; => 6023
-  
   )
 
 ;; Part 2
@@ -77,7 +75,7 @@ R 2")
   (if (->> (map - h t)
            (map abs)
            (some #(< 1 %)))
-    
+
     t))
 
 (defn step2 [[h & followers] dir]
@@ -87,8 +85,7 @@ R 2")
   (reductions step knots actions))
 
 (comment
-  (reductions step2 [[3 0] [2 0] [1 0]] [[0 1] [0 1]])
-  )
+  (reductions step2 [[3 0] [2 0] [1 0]] [[0 1] [0 1]]))
 ;; ......
 ;; ......
 ;; ....H.
@@ -97,27 +94,25 @@ R 2")
 (comment
   (println (visualize "HT" [[0 3] [1 1]]))
   (map - [0 3] [1 1])
-  
+
 ;; => (-1 2)
 ;; Want tail to be [0 2]
   (map + [1 1] [-1 1])
-  
 ;; => (0 2)
-  
-  (defn sign [x]
-    (if (zero? x)
-      0
-      (/ x (abs x))))
   )
 
 (defn follow [h t]
-  (->> (map - h t)
-       (map sign)
-       (map + t)))
+  (let [dist (map - h t)]
+    (if (some #(< 1 (abs %)) dist)
+      (->> dist
+           (map #(Long/signum %))
+           (map + t))
+      t)))
 (comment
-  (map ff (repeat [3 0]) [[1 1]
-                          [1 0]])
-  )
+  (map follow (repeat [3 0]) [[1 1]
+                              [1 0]
+                              [3 1]
+                              [3 0]]))
 
 (defn step [[h & followers] dir]
   (reductions follow (map + h dir) followers))
@@ -125,25 +120,25 @@ R 2")
 (defn simulate [knots actions]
   (reductions step knots actions))
 
-(comment
-  (->> #_#_(io/resource "day9.txt")
-         slurp
-   input
+(defn sol [knots]
+  (->> (io/resource "day9.txt")
+       slurp
        str/split-lines
        parse
-       (simulate [[5 5] [5 5]])
-       (map second)
-       (visualize (repeat "#"))
-       println
-       #_#_
-           set
-         count)
-  )
-;; ...........
-;; ......####.
-;; ......#####
-;; .....######
-;; .........#.
-;; .....#####.
+       (simulate knots)
+       #_(map visualize (repeat "HT"))
+       #_(run! #(do (println %) (println)))
+       (map last)
+       set
+       count))
 
-;; There's something wrong with (follow ), this doesn't match their picture
+(comment
+  ;; Part 1
+  (sol [[0 0] [0 0]])
+  ;; => 6023
+
+  ;; Part 2
+  (sol (repeat 10 [0 0]))
+  ;; => 2533
+  )
+
