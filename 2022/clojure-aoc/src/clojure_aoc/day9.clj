@@ -16,6 +16,9 @@
 (comment
   (println (visualize "HT" [[1 2] [2 2]]))
   (println (visualize (repeat 5 \#) [[1 1] [2 2] [3 3] [4 5] [7 7]])))
+;; To fix this:
+;; - for xs,ys: range = (apply min 0 as), (apply max 0 as)
+;; - adjust range so min = 0
 
 (def input "R 4
 U 4
@@ -126,8 +129,6 @@ R 2")
        str/split-lines
        parse
        (simulate knots)
-       #_(map visualize (repeat "HT"))
-       #_(run! #(do (println %) (println)))
        (map last)
        set
        count))
