@@ -19,3 +19,9 @@
 
 (defmacro as->> [& form]
   `(as-> ~(last form) ~@(butlast form)))
+
+(defn fork [f g h]
+  #(f (g %) (h %)))
+
+(defn over [f g]
+  #(f (map g %)))
