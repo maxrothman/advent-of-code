@@ -23,5 +23,13 @@
 (defn fork [f g h]
   #(f (g %) (h %)))
 
-(defn over [f g]
-  #(f (map g %)))
+(defn over
+  "(f (g x) (g y) ..."
+  [f g]
+  #(apply f (map g %)))
+
+(defmacro defs [& args]
+  (when-not (even? (count args))
+    (throw (ex-info "Must have an even number of forms" {})))
+  (let [pairs (partition 2 args)]
+    `(do ~@(for [[name form] pairs] `(def ~name ~form)))))
