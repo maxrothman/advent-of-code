@@ -1,0 +1,14 @@
+# Always
+.DS_Store
+
+# Jupyter notebook
+venv
+.ipynb_checkpoints
+
+# Clojure
+.clj-kondo
+.lsp
+.calva
+.nrepl-port
+advent-of-code-clojure/target
+.portal
