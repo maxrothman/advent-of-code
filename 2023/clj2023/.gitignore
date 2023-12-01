@@ -11,3 +11,8 @@ pom.xml.asc
 /.prepl-port
 .hgignore
 .hg/
+
+# VSCode stuff
+.calva
+.clj-kondo
+.lsp
