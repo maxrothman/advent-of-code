@@ -1,5 +1,5 @@
 (ns clj2023.day2
-  (:require [clj2023.util :refer [as->> map2 resource-lines]]
+  (:require [clj2023.util :refer [map2 resource-lines spy]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
 
@@ -20,10 +20,12 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green")
                       str/trim
                       (re-matches #"(\d+) ([a-z]+)")
                       rest
-                      vec
-                      (as->> $
-                             (update $ 0 parse-long)
-                             (update $ 1 keyword)))))]))
+                      reverse
+                      vec))
+          (map #(into {} %))
+          (map #(-> %
+                    (update-keys keyword)
+                    (update-vals parse-long))))]))
 
 (comment
   (map parse-line (str/split-lines test-data)))
@@ -66,46 +68,36 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green")
          (map parse-line)
          (filter #(->> %
                        second
-                       (map2 (fn [[n color]] (<= n (limits color))))
+                       (map2 (fn [[color n]] (<= n (limits color))))
                        flatten
                        (every? true?)))
          (map first)
          (reduce +))))
 
 (comment
-  (->> "day2.txt"
-       io/resource
-       io/reader
-       line-seq
-       pt1))
+  (resource-lines "day2.txt" pt1)
+  ;; => 2776
+  )
 
 (comment
   (def game '(([3 :blue] [4 :red])
               ([1 :red] [2 :green] [6 :blue])
               ([2 :green])))
-  (reduce #()
-          game)
+  
   (->> game
        (mapcat identity)
        (reduce (fn [maxs [n color]]
                  (cond-> maxs
                    (> n (maxs color)) (assoc color n)))
-               {:red 0, :green 0, :blue 0})))
-
-(defn game-maxs [game]
-  (->> game
-       (mapcat identity)
-       (reduce (fn [maxs [n color]]
-                 (cond-> maxs
-                   (> n (maxs color)) (assoc color n)))
-               {:red 0, :green 0, :blue 0})))
+               {:red 0, :green 0, :blue 0}))
+  )
 
 (defn pt2 [data]
   (->> data
        (map parse-line)
        (map second)  ;No need for game ID in pt2
-       (map game-maxs)
-       (map #(->> % vals (reduce *)))
+       (map #(apply merge-with max %))
+       (map #(reduce * (vals %)))
        (reduce +)))
 
 (comment
@@ -113,4 +105,6 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green")
        str/split-lines
        pt2)
   (resource-lines "day2.txt" pt2)
+  ;; => 68638
+
   )

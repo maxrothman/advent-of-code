@@ -10,3 +10,7 @@
 (defn resource-lines [fname func]
   (with-open [f (io/reader (io/resource fname))]
     (func (line-seq f))))
+
+(defn spy [x]
+  (prn x)
+  x)
