@@ -1,7 +1,7 @@
 (ns clj2023.day2
-  (:require [clj2023.util :refer [map2 as->>]]
-            [clojure.string :as str]
-            [clojure.java.io :as io]))
+  (:require [clj2023.util :refer [as->> map2 resource-lines]]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 (def test-data
   "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
@@ -105,16 +105,12 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green")
        (map parse-line)
        (map second)  ;No need for game ID in pt2
        (map game-maxs)
-       (map #(->> % vals (reduce *)))))
+       (map #(->> % vals (reduce *)))
+       (reduce +)))
 
 (comment
   (->> test-data
        str/split-lines
        pt2)
-  (->> "day2.txt"
-       io/resource
-       io/reader
-       line-seq
-       pt2
-       (reduce +))
+  (resource-lines "day2.txt" pt2)
   )
