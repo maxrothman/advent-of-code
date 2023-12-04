@@ -1,4 +1,4 @@
-(ns clj2023.util 
+(ns clj2023.util
   (:require [clojure.java.io :as io]))
 
 (defn map2 [f coll]
@@ -14,3 +14,14 @@
 (defn spy [x]
   (prn x)
   x)
+
+(defn >->>
+  "Adapt f to thread-first"
+  [x f & args]
+  (apply f (concat args (list x))))
+
+(defn >>->
+  "Adapt f to thread-last"
+  [f & args]
+  (let [x (last args)]
+    (apply f x (butlast args))))
