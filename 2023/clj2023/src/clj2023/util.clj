@@ -15,13 +15,18 @@
   (prn x)
   x)
 
+(defn spyf [f]
+  (fn spied [& args]
+    (prn args)
+    (apply f args)))
+
 (defn >->>
-  "Adapt f to thread-first"
+  "Call f as if in thread-last within thread-first"
   [x f & args]
-  (apply f (concat args (list x))))
+  (apply f (conj args x)))
 
 (defn >>->
-  "Adapt f to thread-last"
+  "Call f as if in thread-first within thread-last"
   [f & args]
   (let [x (last args)]
     (apply f x (butlast args))))

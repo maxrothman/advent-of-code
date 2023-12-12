@@ -1,8 +1,7 @@
 (ns clj2023.day4
   (:require [clj2023.util :refer [>>-> map2 resource-lines]]
             [clojure.set :as set]
-            [clojure.string :as str]
-            [medley.core :refer [indexed]]))
+            [clojure.string :as str]))
 
 (defn parse-line [l]
   (->> (str/split l #":") second
