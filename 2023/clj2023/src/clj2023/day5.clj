@@ -249,56 +249,6 @@ humidity-to-location map:
   ;; => 51580674
   )
 
-(comment
-  (-> imap/empty (imap/mark 5 10 :a) (imap/mark 6 8 :b)
-      (subseq >= 4 <= 9))
-  ;; => ([[5 6] #{:a}] [[6 8] #{:b :a}] [[8 10] #{:a}])
-
-  ;; If the search range isn't fully mapped, split it up
-  (let [[s e] [4 15]
-        rs '([[5 6] #{1}] [[7 8] #{1 2}] [[8 10] #{1}])
-        rs-start (-> rs first first first)
-        rs-end (-> rs last first second)]
-    (cond-> rs
-      (not= rs-start s) (conj [[s rs-start] #{:TODO}])
-      (not= rs-end e) (conj [[rs-end e] #{:TODO}])))
-  ;; This misses gaps in the result range
-
-  (let [q [4 15]
-        rs '([[5 6] #{1}] [[7 8] #{1 2}] [[8 10] #{1}])]
-    (reduce (partial apply iset/erase)
-            (->iset [q])
-            (map first rs)))
-  ;; This catches all the gaps
-  ;; Keep these ranges into the next mapping 
-
-  ;; Don't need a mapper anymore, can map intervals directly to intervals
-
-  (let [[raw-starts raw-maps] (parse test-raw)
-        starts (map (partial apply start-len->interval)
-                    (partition 2 raw-starts))
-        maps (map ->intervals raw-maps)]
-    #_(subseq (first maps) >= 50 <= 103)
-    #_starts
-    ;; NB: < and > don't seem to work correctly, only >= and <=
-    ;; Because < and > require the intervals to be fully covered by a segment to match, >= and <=
-    ;; allow segments to intersect
-    )
-  (-> iset/empty (iset/mark 55 68) (iset/mark 79 93))
-  (-> iset/empty (iset/mark 0 5) (iset/mark 10 15))
-  ;; Bug: lowest interval must be inserted first https://github.com/helins/interval.cljc/issues/2
-
-  (subseq (-> imap/empty (imap/mark 0 10 :a))
-          >= 5 <= 7)
-  ;; Crap, subseq returns ranges that are too big too, so I need to snip them
-  )
-(defn intersection-wrong [ivls ivl-map]
-  (let [matches (mapcat #(subseq ivl-map >= (first %) <= (second %))
-                        ivls)
-        gaps (reduce (partial apply iset/erase)
-                     (->iset (map first matches))
-                     (keys ivl-map))]
-    gaps))
 
 (defn ->imap [map-entries]
   (reduce (fn [m [[s e] v]] (imap/mark m s e v))
@@ -397,51 +347,6 @@ humidity-to-location map:
   (->> (pt2 (slurp (io/resource "day5.txt")))
        (mapcat identity)
        (apply min))
-  )
+  ;; => 99751240
 
-;; Goal: map ranges in src through map to dest
-;; Need:
-;; - segments of mapped ranges present in src, their corresponding modifiers
-;; - unmatched segments
-(comment
-  (let [[raw-starts raw-maps] (parse test-raw)
-        starts (->iset (map (partial apply start-len->interval) (partition 2 raw-starts)))
-        maps (->> (map2 ->entry2 raw-maps) (map ->imap))
-        mapped (intersection (first maps) starts)
-        unmapped (difference starts (first maps))]
-    (->iset
-     (into (map (fn [[ivl v]] (ivl+ ivl (first (seq v)))) mapped)
-           unmapped))))
-
-(defn map-ivl [src imap]
-  (->> (mapcat (fn [[s e]] (subseq imap >= s <= e)) src)  ;ivls in imap matching src
-       (map #(update % 1 (comp first seq)))  ;Get rid of the sets around the vals so we can turn it back into an imap
-       ->imap
-       (>>-> difference src)))
-
-(comment
-  (map-ivl [[2 4] [6 8]]
-           (->imap [[[0 5] 7] [[5 10] -3]])))
-
-(comment
-  (->iset [[10 15] [0 5]])
-  (intersection [[5 10]] (-> imap/empty (imap/mark 0 20 :a)))
-
-  (let [[raw-starts raw-maps] (parse test-raw)
-        starts (->iset (map (partial apply start-len->interval) (partition 2 raw-starts)))
-        maps (map ->intervals2 raw-maps)]
-    (intersection starts (first maps))
-    #_(reduce (fn [ivls m]
-                ()
-                #_(if-let [[mapper] (get m v)]
-                    (mapper v)
-                    v))
-              starts
-              maps)))
-
-(comment
-  ;; Testing dthume's interval treeset
-  (it/it-difference (into (it/interval-treeset) [[5 10]])
-                    (into (it/interval-treeset) [[5 6] [9 10]]))
-  ;; Nope
   )
