@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [dev.weavejester/medley "1.7.0"]
                  [org.clojure/core.logic "1.0.1"]
-                 [io.helins/interval "1.0.0-beta0"]])
+                 [io.helins/interval "1.0.0-beta0"]
+                 [org.clojure/math.numeric-tower "0.0.5"]])

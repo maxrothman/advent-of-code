@@ -30,3 +30,10 @@
   [f & args]
   (let [x (last args)]
     (apply f x (butlast args))))
+
+(defn until
+  "Iterate f on x until (pred x) is true"
+  [pred f x]
+  (->> (iterate f x)
+       (drop-while (complement pred))
+       first))

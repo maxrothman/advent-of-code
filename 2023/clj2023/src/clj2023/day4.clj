@@ -1,5 +1,5 @@
 (ns clj2023.day4
-  (:require [clj2023.util :refer [>>-> map2 resource-lines]]
+  (:require [clj2023.util :refer [>>-> map2 resource-lines until]]
             [clojure.set :as set]
             [clojure.string :as str]))
 
@@ -30,13 +30,6 @@
   (resource-lines "day4.txt" pt1)
   ;; => 25651
   )
-
-(defn until 
-  "Iterate f on x until (pred x) is true"
-  [pred f x]
-  (->> (iterate f x)
-       (drop-while (complement pred))
-       first))
 
 (defn it [{[win & wins] :wins, [card & cards] :cards, processed :processed}]
   {:wins wins
