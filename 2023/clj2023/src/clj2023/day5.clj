@@ -7,135 +7,6 @@
             [helins.interval.map :as imap]
             [helins.interval.set :as iset]))
 
-(comment
-  (defmacro gen [d]
-    (let [q (gensym)]
-      `(l/run* [~q]
-         ~@(for [r (eval d)] `(l/membero ~q ~r)))))
-
-  (gen (for [start (range 3)] (vec (range start (+ 3 start)))))
-
-  (defn f [] (let [v (l/lvar 'a)] [v (l/== 1 v)]))
-  (let [[n v] (f)]
-    (l/run* [b]
-      v
-      (l/== n b)))
-
-  (l/run* [b]
-    (l/== 1 (l/lvar 'a false))
-    (l/== b (l/lvar 'a false)))
-
-  (defn g [] (l/== 1 (l/lvar 'a false)))
-  (l/run* [b]
-    (g)
-    (l/== b (l/lvar 'a false)))
-
-  (l/defne t [x]
-    (let [y 1]
-      ([y])))
-
-  (defn t [x]
-    (let [y 1]
-      (l/== x y)))
-
-  (l/run* [a]
-    (t a))
-
-  (defn f [lvar]
-    [(l/== lvar 1)
-     (l/== lvar 2)])
-  (l/run* [a]
-    (l/or* (f a)))
-  ;; => (1 2)
-  (l/run* [a]
-    (l/conde (f a)))
-  ;; => Error printing return value (IllegalArgumentException) at clojure.core/-cache-protocol-fn (core_deftype.clj:584).
-  ;;    No implementation of method: :ready? of protocol: #'clojure.core.logic.protocols/ISuspendedStream found for class: clojure.core.logic$_EQ__EQ_$fn__7943
-  )
-(defn cond-clauses
-  "Necessary because core.logic's cond-clauses is private"
-  [a]
-  (fn [goals]
-    `((~(first goals) ~a) ~@(rest goals))))
-
-(defmacro conda
-  "Version of conda that takes a coll of clauses rather than clauses as varargs.
-   Necessary for creating programs with variable numbers of clauses. Copied directly
-   from clojure.core.logic."
-  [clauses]
-  (let [a (gensym "a")]
-    `(fn [~a]
-       (l/ifa* ~@(map (cond-clauses a) clauses)))))
-
-(defn map-range
-  "Return a constraint mapping lvar-in to lvar-out
-   from the src range to the dest range"
-  [lvar-in lvar-out [dest-start src-start length]]
-  (let [src-end (+ src-start (dec length))
-        dest-end (+ dest-start (dec length))]
-    (l/and*
-     [(fd/in lvar-in (fd/interval src-start src-end))
-      (fd/in lvar-out (fd/interval dest-start dest-end))
-      (fd/eq (= lvar-out
-                (+ (- lvar-in src-start)
-                   dest-start)))])))
-
-(defn invert-src [lvar [_ src-start length]]
-  (l/or* [(fd/in lvar (fd/interval 0 (dec src-start)))
-          (fd/in lvar (fd/interval (+ src-start length) Integer/MAX_VALUE))]))
-
-(defn map-ranges
-  "Return a constraint mapping lvar-in to lvar-out using one of
-   the provided ranges if one matches, and with (== lvar-in lvar-out)
-   if not"
-  [lvar-in lvar-out ranges]
-  (let [rs (mapv #(map-range lvar-in lvar-out %) ranges)
-        inverse-rs (mapv #(invert-src lvar-in %) ranges)]
-    (l/or*
-     (conj rs
-           (l/and* (conj inverse-rs
-                         (l/== lvar-in lvar-out)))))))
-
-(comment
-  (l/run* [x]
-    (conda
-     [[(l/== x 1)]
-      [(l/== x 2)]]))
-
-  (l/run* [soil]
-    (l/fresh [seed fertilizer water light temp humidity loc]
-      (fd/in seed (fd/domain 98 99 #_[79 14 55 13]))
-      (l/or*
-       [(map-range seed soil 50 98 2)
-        (l/== seed soil)])))
-  ;; => (98 99 50 51)
-  ;; Use conda to stop using options after one has matched
-  (l/run* [soil]
-    (l/fresh [seed fertilizer water light temp humidity loc]
-      (fd/in seed (fd/domain 98 99 100 101 #_[79 14 55 13]))
-      (l/conda
-       [(map-range seed soil [50 98 2])]
-       [(l/== seed soil)])))
-  ;; Except that there's no equivalent of or* for conda. Maybe I can rule out the default match some
-  ;; other way? Also if any members of the domain match a clause, it stops matching all other
-  ;; clauses even if some of the domain members only match further clauses, which is no good
-
-  (l/run* [soil]
-    (l/fresh [seed fertilizer water light temp humidity loc]
-      (fd/in seed (fd/domain 98 99 100 101 #_[79 14 55 13]))
-      (l/conde
-       [(map-range seed soil [50 98 2])]
-       [(l/or* [(fd/in seed (fd/interval 0 97))
-                (fd/in seed (fd/interval 100 Integer/MAX_VALUE))])
-        (l/== seed soil)])))
-
-  (l/run* [soil]
-    (l/fresh [seed]
-      (fd/in seed (fd/domain 79 14 55 13))
-      (map-ranges seed soil [[50 98 2] [52 50 48]])))
-  ;; => (57 81 13 14)
-  ;; Yay!
-  )
 (def test-raw
   "seeds: 79 14 55 13
 
@@ -181,6 +52,35 @@ humidity-to-location map:
 
 (comment
   @(def test-data (parse test-raw)))
+
+(defn map-range
+  "Return a constraint mapping lvar-in to lvar-out
+   from the src range to the dest range"
+  [lvar-in lvar-out [dest-start src-start length]]
+  (let [src-end (+ src-start (dec length))
+        dest-end (+ dest-start (dec length))]
+    (l/and*
+     [(fd/in lvar-in (fd/interval src-start src-end))
+      (fd/in lvar-out (fd/interval dest-start dest-end))
+      (fd/eq (= lvar-out
+                (+ (- lvar-in src-start)
+                   dest-start)))])))
+
+(defn invert-src [lvar [_ src-start length]]
+  (l/or* [(fd/in lvar (fd/interval 0 (dec src-start)))
+          (fd/in lvar (fd/interval (+ src-start length) Integer/MAX_VALUE))]))
+
+(defn map-ranges
+  "Return a constraint mapping lvar-in to lvar-out using one of
+   the provided ranges if one matches, and with (== lvar-in lvar-out)
+   if not"
+  [lvar-in lvar-out ranges]
+  (let [rs (mapv #(map-range lvar-in lvar-out %) ranges)
+        inverse-rs (mapv #(invert-src lvar-in %) ranges)]
+    (l/or*
+     (conj rs
+           (l/and* (conj inverse-rs
+                         (l/== lvar-in lvar-out)))))))
 
 (defn pt1 [data]
   (let [[start maps] (parse data)
