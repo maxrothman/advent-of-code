@@ -1,4 +1,8 @@
 {:extra-indents
- {run [[:block 1]]
+ {run [[:block 2]]
   run* [[:block 1]]
-  fresh [[:block 1]]}}
+  fresh [[:block 1]]
+  matche [[:block 1]]
+  matcha [[:block 1]]
+  conde [[:block 0]]
+  letfn [[:block 1] [:inner 2 0]]}}

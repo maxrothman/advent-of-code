@@ -37,3 +37,14 @@
   (->> (iterate f x)
        (drop-while (complement pred))
        first))
+
+(defn progress [s]
+  (let [r (doall
+           (map-indexed (fn [i x]
+                          (if (zero? (mod i 10))
+                            (do (print ".") (flush) x)
+                            x))
+                        s))]
+    (println)
+    r)
+  )
