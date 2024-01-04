@@ -9,4 +9,5 @@
                  [io.helins/interval "1.0.0-beta0"]
                  [org.clojure/math.numeric-tower "0.0.5"]
                  [org.clojure/math.combinatorics "0.2.0"]
-                 [net.mikera/core.matrix "0.63.0"]])
+                 [net.mikera/core.matrix "0.63.0"]
+                 [dom-top "1.0.9"]])
