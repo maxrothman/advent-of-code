@@ -10,4 +10,5 @@
                  [org.clojure/math.numeric-tower "0.0.5"]
                  [org.clojure/math.combinatorics "0.2.0"]
                  [net.mikera/core.matrix "0.63.0"]
-                 [dom-top "1.0.9"]])
+                 [dom-top "1.0.9"]
+                 [org.flatland/ordered "1.15.11"]])
