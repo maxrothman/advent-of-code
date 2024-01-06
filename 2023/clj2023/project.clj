@@ -11,4 +11,6 @@
                  [org.clojure/math.combinatorics "0.2.0"]
                  [net.mikera/core.matrix "0.63.0"]
                  [dom-top "1.0.9"]
-                 [org.flatland/ordered "1.15.11"]])
+                 [org.flatland/ordered "1.15.11"]
+                 [org.clojure/core.match "1.0.1"]
+                 [com.cnuernber/charred "1.033"]])

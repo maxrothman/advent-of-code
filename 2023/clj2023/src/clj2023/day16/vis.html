@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day 16</title>
+  <style>
+    .num {
+      max-width: 2em;
+    }
+
+    #controls {
+      display: flex;
+      gap: 2em;
+    }
+
+    html,
+    body {
+      width: 99%;
+    }
+
+    #canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="controls">
+    <button id="reset">🔄</button>
+    <div id="frame-controls">
+      <button id="frame-back">⬅</button>
+      <input id="frame-disp" class="num" />
+      <button id="frame-forward">⮕</button>
+    </div>
+    <div id="play-controls">
+      <button id="slower">⏪</button>
+      <button id="play-pause">▶️</button>
+      <button id="faster">⏩</button>
+    </div>
+    <input id="speed" class="num" />
+  </div>
+  <canvas id="canvas" width="1000" height="1000"></canvas>
+
+  <script src="data.js"></script>
+  <script>
+    const baseDelay = 500
+    let speed = 1
+    const speedMin = 0.1, speedMax = 10
+    let frame = 0
+    let playing = null
+
+    const speed2delay = () => {
+      return baseDelay / speed
+    }
+
+    const render = () => {
+      document.getElementById('play-pause').textContent = playing ? '⏸' : '▶️'
+      document.getElementById('frame-disp').value = frame
+
+      document.getElementById('speed').value = speed
+
+      const slower = document.getElementById('slower')
+      const faster = document.getElementById('faster')
+      slower.removeAttribute('disabled')
+      faster.removeAttribute('disabled')
+      if (speed <= speedMin) {
+        slower.setAttribute('disabled', true)
+      }
+      if (speed >= speedMax) {
+        faster.setAttribute('disabled', true)
+      }
+
+      const frameForward = document.getElementById('frame-forward')
+      const frameBack = document.getElementById('frame-back')
+      frameForward.removeAttribute('disabled')
+      frameBack.removeAttribute('disabled')
+      if (frame >= window.DATA.moves.length - 1) {
+        frameForward.setAttribute('disabled', true)
+      }
+      if (frame <= 0) {
+        frameBack.setAttribute('disabled', true)
+      }
+
+      draw()
+    }
+
+    const play = () => {
+      frame++
+      if (frame >= window.DATA.moves.length - 1) {
+        playing = clearInterval(playing)
+      }
+      render()
+    }
+
+    document.getElementById("play-pause").addEventListener('click', (e) => {
+      if (playing) {
+        playing = clearInterval(playing)
+      } else {
+        playing = setInterval(play, speed2delay())
+      }
+      render()
+    })
+
+    document.getElementById("slower").addEventListener('click', (e) => {
+      speed /= 2
+      clearInterval(playing)
+      playing = setInterval(play, speed2delay())
+      render()
+    })
+
+    document.getElementById("faster").addEventListener('click', (e) => {
+      speed *= 2
+      clearInterval(playing)
+      playing = setInterval(play, speed2delay())
+      render()
+    })
+
+    document.getElementById("frame-back").addEventListener('click', (e) => {
+      clearInterval(playing)
+      frame--
+      render()
+    })
+
+    document.getElementById("frame-forward").addEventListener('click', (e) => {
+      playing = clearInterval(playing)
+      frame++
+      render()
+    })
+
+    document.getElementById("reset").addEventListener('click', () => {
+      playing = clearInterval(playing)
+      frame = 0
+      render()
+    })
+
+    const draw = () => {
+      const canvas = document.getElementById("canvas")
+      const ctx = canvas.getContext('2d')
+
+      const maxDim = canvas.width
+      const cellSize = Math.floor(maxDim / window.DATA.grid.length)
+
+      const withRestore = (f) => {
+        ctx.save()
+        f()
+        ctx.restore()
+      }
+
+      const withPath = (f) => {
+        ctx.beginPath()
+        ctx.moveTo(0, 0)
+        f()
+        ctx.stroke()
+      }
+
+      const coord2px = (coord) => {
+        return coord.map((c) => 1 + (cellSize * c))
+      }
+
+      const mirrorStyle = () => {
+        ctx.lineWidth = 5
+        ctx.lineCap = "round"
+        ctx.strokeStyle = 'black'
+      }
+
+      const backslash = () => {
+        mirrorStyle()
+        withPath(() => {
+          ctx.moveTo(cellSize * .1, cellSize * .1)
+          ctx.lineTo(cellSize * .9, cellSize * .9)
+        })
+      }
+
+      const slash = () => {
+        mirrorStyle()
+        withPath(() => {
+          ctx.lineWidth = 5
+          ctx.lineCap = "round"
+          ctx.moveTo(cellSize * .9, cellSize * .1)
+          ctx.lineTo(cellSize * .1, cellSize * .9)
+        })
+      }
+
+      const vsplit = () => {
+        mirrorStyle()
+        withPath(() => {
+          ctx.moveTo(cellSize / 2, cellSize * .1)
+          ctx.lineTo(cellSize / 2, cellSize * .9)
+        })
+      }
+
+      const hsplit = () => {
+        mirrorStyle()
+        withPath(() => {
+          ctx.moveTo(cellSize * .1, cellSize / 2)
+          ctx.lineTo(cellSize * .9, cellSize / 2)
+        })
+      }
+
+      // via https://stackoverflow.com/a/36805543/1901786
+      const arrow = (fromx, fromy, tox, toy) => {
+        const headSize = cellSize / 6
+        const color = "rgba(255, 0, 0, 0.5)"
+
+        withRestore(() => {
+          withPath(() => {
+            ctx.strokeStyle = color
+            ctx.lineWidth = cellSize / 10
+            ctx.moveTo(fromx, fromy)
+            ctx.lineTo(tox, toy)
+          })
+
+          ctx.translate(tox, toy)
+          withPath(() => {
+            ctx.lineWidth = 1
+            ctx.fillStyle = color
+            ctx.strokeStyle = "rgba(0, 0, 0, 0)"
+
+            ctx.moveTo(0, headSize)
+            ctx.lineTo(headSize + toy, 0)
+            ctx.lineTo(0, -headSize)
+            ctx.closePath()
+            ctx.fill()
+          })
+        })
+      }
+
+      const arrowDir = (dir) => {
+        withRestore(() => {
+          ctx.translate(cellSize / 2, cellSize / 2)
+          ctx.rotate(Math.atan2(...dir))
+          arrow(0, 0, cellSize / 2 * .65, 0)
+        })
+      }
+
+      withRestore(() => {
+        // background
+        ctx.fillStyle = "#EFEFEF"
+        ctx.fillRect(0, 0, maxDim, maxDim)
+
+        // grid
+        withPath(() => {
+          for (let i = 0; i <= maxDim; i += cellSize) {
+            ctx.strokeStyle = 'black'
+            ctx.moveTo(i, 0)
+            ctx.lineTo(i, maxDim)
+          }
+          for (let i = 0; i <= maxDim; i += cellSize) {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'
+            ctx.moveTo(0, i)
+            ctx.lineTo(maxDim, i)
+          }
+        })
+      })
+
+      // visited cells
+      const [seen, todo] = window.DATA.moves[frame]
+      withRestore(() => {
+        seen.forEach(([[y, x], _]) => {
+          ctx.fillStyle = "#D4D4D4"
+          ctx.fillRect(...coord2px([x, y]), cellSize - 2, cellSize - 2)
+        })
+      })
+
+      // mirrors
+      window.DATA.grid.forEach((row, y) => {
+        row.forEach((cell, x) => {
+          withRestore(() => {
+            ctx.translate(...coord2px([x, y]))
+            switch (cell) {
+              case "/": slash(); break;
+              case "\\": backslash(); break;
+              case "|": vsplit(); break;
+              case "-": hsplit(); break;
+              default: break;
+            }
+          })
+        })
+      })
+
+      // arrows
+      todo.forEach(([[y, x], dir]) => {
+        withRestore(() => {
+          ctx.translate(...coord2px([x, y]))
+          arrowDir(dir)
+        })
+      })
+    }
+
+    // init
+    render()
+  </script>
+</body>
+
+</html>
