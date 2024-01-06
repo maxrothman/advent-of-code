@@ -5,7 +5,8 @@
             [charred.api :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [medley.core :refer [take-upto]]))
+            [medley.core :refer [take-upto]]
+            [clj2023.util :refer [until]]))
 
 (def test-data
   ".|...\\....
@@ -30,12 +31,12 @@
     [_ \\] [(vec (reverse dir))]
     :else [dir]))
 
-;; Reduces size of output, making it easier to 
+;; Reduces size of output, making it easier to send data to simulation
 (defn jump [seen coord dir]
   )
 
 (defn simulate [grid start dir]
-  (iterate #_#_until (comp empty? second)
+  (#_iterate until (comp empty? second)
    (fn [[seen [[coord dir] & rst]]]
      (if (seen [coord dir])
        [seen rst]
@@ -48,11 +49,13 @@
    [#{} (list [start dir])]))
 
 (defn pt1 [data]
-  (->> (simulate (parse data) [0 0] [0 1])
+  (->> (simulate (parse data) [0 -1] [0 1])
        first
        (map first)
        set
-       count))
+       count
+       ;; We added an extra spot in when we started out-of-frame
+       dec))
 
 (defn coords->mat [m coords cur]
   (-> (reduce #(assoc-in %1 %2 \#) m coords)
@@ -62,7 +65,7 @@
   ;; seen: #{[[x y] dir]}
   ;; dir: [x y] to add
   ;; todo: [[x y] dir]
-  
+
   (let [data (parse (slurp (io/resource "day16.txt")))
         sim (take 100 (simulate data [0 0] [0 1]))
         seens (->> sim (map first) (map (partial map first)))
@@ -79,9 +82,20 @@
   (defn spyc [m x]
     (prn m)
     x)
+
+  (->> (simulate (parse (slurp (io/resource "day16.txt"))) [0 0] [0 1])
+       (drop-while (comp some? second))
+       first
+       first
+       (map first)
+       set
+       count)
+
   ;; To use, replace the `until` in simulate with `iterate`
   (->> (simulate (parse (slurp (io/resource "day16.txt"))) [0 0] [0 1])
        (take-upto (comp empty? second))
+       (partition-all 500)
+       first
        (spyc "assoc")
        (assoc {:grid (m/emap str (parse (slurp (io/resource "day16.txt"))))} :moves)
        (spyc "json")

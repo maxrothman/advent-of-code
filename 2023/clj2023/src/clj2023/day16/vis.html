@@ -42,13 +42,13 @@
     </div>
     <input id="speed" class="num" />
   </div>
-  <canvas id="canvas" width="1000" height="1000"></canvas>
+  <canvas id="canvas" width="5000" height="5000"></canvas>
 
   <script src="data.js"></script>
   <script>
     const baseDelay = 500
     let speed = 1
-    const speedMin = 0.1, speedMax = 10
+    const speedMin = 0.1, speedMax = 100
     let frame = 0
     let playing = null
 
@@ -161,40 +161,38 @@
       }
 
       const mirrorStyle = () => {
-        ctx.lineWidth = 5
+        ctx.lineWidth = cellSize*.2
         ctx.lineCap = "round"
         ctx.strokeStyle = 'black'
       }
 
       const backslash = () => {
-        mirrorStyle()
         withPath(() => {
+          mirrorStyle()
           ctx.moveTo(cellSize * .1, cellSize * .1)
           ctx.lineTo(cellSize * .9, cellSize * .9)
         })
       }
 
       const slash = () => {
-        mirrorStyle()
         withPath(() => {
-          ctx.lineWidth = 5
-          ctx.lineCap = "round"
+          mirrorStyle()
           ctx.moveTo(cellSize * .9, cellSize * .1)
           ctx.lineTo(cellSize * .1, cellSize * .9)
         })
       }
 
       const vsplit = () => {
-        mirrorStyle()
         withPath(() => {
+          mirrorStyle()
           ctx.moveTo(cellSize / 2, cellSize * .1)
           ctx.lineTo(cellSize / 2, cellSize * .9)
         })
       }
 
       const hsplit = () => {
-        mirrorStyle()
         withPath(() => {
+          mirrorStyle()
           ctx.moveTo(cellSize * .1, cellSize / 2)
           ctx.lineTo(cellSize * .9, cellSize / 2)
         })
@@ -202,13 +200,13 @@
 
       // via https://stackoverflow.com/a/36805543/1901786
       const arrow = (fromx, fromy, tox, toy) => {
-        const headSize = cellSize / 6
-        const color = "rgba(255, 0, 0, 0.5)"
+        const headSize = cellSize / 3
+        const color = "rgba(255, 0, 0, 1)"
 
         withRestore(() => {
           withPath(() => {
             ctx.strokeStyle = color
-            ctx.lineWidth = cellSize / 10
+            ctx.lineWidth = cellSize / 5
             ctx.moveTo(fromx, fromy)
             ctx.lineTo(tox, toy)
           })
