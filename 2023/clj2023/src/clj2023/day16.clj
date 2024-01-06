@@ -1,12 +1,12 @@
 (ns clj2023.day16
-  (:require [clj2023.util :refer [>>->]]
+  (:require [charred.api :as json]
+            [clj2023.util :refer [>>-> as->>]]
+            [clj2023.util :refer [until]]
             [clojure.core.match :refer [match]]
             [clojure.core.matrix :as m]
-            [charred.api :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [medley.core :refer [take-upto]]
-            [clj2023.util :refer [until]]))
+            [medley.core :refer [take-upto]]))
 
 (def test-data
   ".|...\\....
@@ -32,40 +32,42 @@
     :else [dir]))
 
 ;; Reduces size of output, making it easier to send data to simulation
-(defn jump [seen coord dir]
-  )
+(defn jump [grid [y x] dir]
+  (m/submatrix y (m/row-count grid)))
+
+(defn simulate* [grid [seen [[coord dir] & rst]]]
+  (if (seen [coord dir])
+    [seen rst]
+    [(conj seen [coord dir])
+     (into rst
+           (let [new-coord (mapv + coord dir)
+                 v (get-in grid new-coord)]
+             (when v
+               (map #(vector new-coord %) (splitflect dir v)))))]))
 
 (defn simulate [grid start dir]
   (#_iterate until (comp empty? second)
-   (fn [[seen [[coord dir] & rst]]]
-     (if (seen [coord dir])
-       [seen rst]
-       [(conj seen [coord dir])
-        (into rst
-              (let [new-coord (mapv + coord dir)
-                    v (get-in grid new-coord)]
-                (when v
-                  (map #(vector new-coord %) (splitflect dir v)))))]))
-   [#{} (list [start dir])]))
+             (partial simulate* grid)
+             [#{} (list [start dir])]))
 
-(defn pt1 [data]
-  (->> (simulate (parse data) [0 -1] [0 1])
+(defn count-seen [simulate-output]
+  (->> simulate-output
        first
        (map first)
        set
        count
-       ;; We added an extra spot in when we started out-of-frame
+       ;; We added an extra cell in when we started out-of-frame
        dec))
+
+(defn pt1 [data]
+  (->> (simulate (parse data) [0 -1] [0 1])
+       count-seen))
 
 (defn coords->mat [m coords cur]
   (-> (reduce #(assoc-in %1 %2 \#) m coords)
       (assoc-in cur \O)))
 
 (comment
-  ;; seen: #{[[x y] dir]}
-  ;; dir: [x y] to add
-  ;; todo: [[x y] dir]
-
   (let [data (parse (slurp (io/resource "day16.txt")))
         sim (take 100 (simulate data [0 0] [0 1]))
         seens (->> sim (map first) (map (partial map first)))
@@ -83,15 +85,7 @@
     (prn m)
     x)
 
-  (->> (simulate (parse (slurp (io/resource "day16.txt"))) [0 0] [0 1])
-       (drop-while (comp some? second))
-       first
-       first
-       (map first)
-       set
-       count)
-
-  ;; To use, replace the `until` in simulate with `iterate`
+;; To use, replace the `until` in simulate with `iterate`
   (->> (simulate (parse (slurp (io/resource "day16.txt"))) [0 0] [0 1])
        (take-upto (comp empty? second))
        (partition-all 500)
@@ -106,5 +100,27 @@
        (spit "src/clj2023/day16/data.js"))
 
   (pt1 test-data)
-  (pt1 (slurp (io/resource "day16.txt")))
+  ;; => 46
+  
+  (time (pt1 (slurp (io/resource "day16.txt"))))
+  ;; => 7060 
+  )
+
+(defn pt2 [data]
+  (let [parsed (parse data)]
+    (->> (map #(vector [%1 -1] [0 1]) (range (m/column-count parsed)))
+         (concat (map #(vector [%1 (m/row-count parsed)] [0 -1])
+                      (range (m/column-count parsed))))
+         (concat (map #(vector [-1 %1] [1 0])
+                      (range (m/row-count parsed))))
+         (concat (map #(vector [(m/column-count parsed) %1] [-1 0])
+                      (range (m/row-count parsed))))
+         (map #(count-seen (apply simulate parsed %)))
+         (apply max))))
+
+(comment
+  (pt2 test-data)
+  ;; => 51
+  
+  (time (pt2 (slurp (io/resource "day16.txt"))))
   )
