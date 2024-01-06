@@ -31,10 +31,6 @@
     [_ \\] [(vec (reverse dir))]
     :else [dir]))
 
-;; Reduces size of output, making it easier to send data to simulation
-(defn jump [grid [y x] dir]
-  (m/submatrix y (m/row-count grid)))
-
 (defn simulate* [grid [seen [[coord dir] & rst]]]
   (if (seen [coord dir])
     [seen rst]
@@ -86,18 +82,19 @@
     x)
 
 ;; To use, replace the `until` in simulate with `iterate`
-  (->> (simulate (parse (slurp (io/resource "day16.txt"))) [0 0] [0 1])
-       (take-upto (comp empty? second))
-       (partition-all 500)
-       first
-       (spyc "assoc")
-       (assoc {:grid (m/emap str (parse (slurp (io/resource "day16.txt"))))} :moves)
-       (spyc "json")
-       (>>-> json/write-json-str {:indent-str " "})
-       (spyc "str")
-       (str "window.DATA = ")
-       (spyc "spit")
-       (spit "src/clj2023/day16/data.js"))
+  (let [data (parse test-data #_(slurp (io/resource "day16.txt")))]
+    (->> (simulate data [0 0] [0 1])
+        (take-upto (comp empty? second))
+        (partition-all 500)
+        #_#_first
+        (spyc "assoc")
+        (assoc {:grid (m/emap str data)} :moves)
+        (spyc "json")
+        (>>-> json/write-json-str {:indent-str " "})
+        (spyc "str")
+        (str "window.DATA = ")
+        (spyc "spit")
+        (spit "src/clj2023/day16/data.js")))
 
   (pt1 test-data)
   ;; => 46

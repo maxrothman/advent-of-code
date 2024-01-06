@@ -17,3 +17,6 @@ pom.xml.asc
 .clj-kondo
 .lsp
 .portal
+
+# Big generated datafiles
+src/clj2023/day16/data.js
