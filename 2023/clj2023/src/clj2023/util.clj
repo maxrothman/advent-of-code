@@ -58,8 +58,5 @@
   "Returns a comparator keyed by f, i.e. (compare (f x) (f y))"
   ;; Ref: https://clojuredocs.org/clojure.core/sorted-set-by#example-542692d5c026201cdc327096
   ([keyf] (key-cmp keyf compare))
-  ([keyf cmp] (fn comparator [x y]
-                (let [c (cmp (keyf x) (keyf y))]
-                  (if (not= c 0)
-                    c
-                    (cmp x y))))))
+  ([keyf cmp] (fn comparator [x y] 
+                (cmp (keyf x) (keyf y)))))

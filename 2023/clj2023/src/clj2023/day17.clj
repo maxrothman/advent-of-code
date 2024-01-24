@@ -1,10 +1,10 @@
 (ns clj2023.day17
-  (:require [arrangement.core :as order]
-            [clj2023.util :refer [>>-> key-cmp spy]]
+  (:require [clj2023.util :refer [>>-> key-cmp spy]]
             [clojure.core.matrix :as m]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [flow-storm.api :as fs-api]
-            [clojure.java.io :as io]))
+            [clojure.data.priority-map :as priority-map]))
 
 (def test-data
   "2413432311323
@@ -29,7 +29,6 @@
 
 (defn neighbors [grid [cur :as path]]
   (let [prev-steps-in-dir (->> (partition 2 1 path)
-                               #_reverse
                                (map #(apply mapv - %))
                                (partition-by identity)
                                first
@@ -51,6 +50,7 @@
   (neighbors td '([1 4] [1 3] [1 2] [0 2] [0 1] [0 0])))
 
 (defn explore-1 [grid [seen paths]]
+  (swap! a conj (count paths))
   (let [[[wt _] path :as p] (first paths)
         rst (disj paths p)]
     [(conj seen (first path))
@@ -83,9 +83,9 @@
 
 (comment
   (time (shortest-path td [0 0] [12 12]))
-
+  
   (let [grid (parse (slurp (io/resource "day17.txt")))]
-    (time (shortest-path grid [0 0] [30 30]#_[(count grid) (count (grid 0))])))
+    (time (shortest-path grid [0 0] [30 30] #_[(count grid) (count (grid 0))])))
   )
 
 (comment
@@ -112,6 +112,7 @@
 
   ;; Profile the following expression:
   (prof/profile (shortest-path (parse (slurp (io/resource "day17.txt"))) [0 0] [25 25]))
+  ;; "Elapsed time: 5539.046281 msecs"
 
   ;; The resulting flamegraph will be stored in /tmp/clj-async-profiler/results/
   ;; You can view the HTML file directly from there or start a local web UI:
