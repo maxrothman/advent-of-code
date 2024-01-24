@@ -13,4 +13,9 @@
                  [dom-top "1.0.9"]
                  [org.flatland/ordered "1.15.11"]
                  [org.clojure/core.match "1.0.1"]
-                 [com.cnuernber/charred "1.033"]])
+                 [com.cnuernber/charred "1.033"]
+                 [mvxcvi/arrangement "2.1.0"]
+                 [com.github.flow-storm/flow-storm-dbg "3.9.1"]
+                 [com.clojure-goes-fast/clj-async-profiler "1.1.1"]]
+  ;; For clj-async-profiler
+  :jvm-opts ["-Djdk.attach.allowAttachSelf"])

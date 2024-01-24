@@ -25,11 +25,13 @@
   [x f & args]
   (apply f (conj args x)))
 
-(defn >>->
+(defmacro >>->
   "Call f as if in thread-first within thread-last"
+  ;; Is a macro so it can work on other macros, like cond->
   [f & args]
   (let [x (last args)]
-    (apply f x (butlast args))))
+    `(~f ~x ~@(butlast args)))
+  )
 
 (defn until
   "Iterate f on x until (pred x) is true"
@@ -51,3 +53,13 @@
 
 (defn fork [f g h x]
   (f (g x) (h x)))
+
+(defn key-cmp
+  "Returns a comparator keyed by f, i.e. (compare (f x) (f y))"
+  ;; Ref: https://clojuredocs.org/clojure.core/sorted-set-by#example-542692d5c026201cdc327096
+  ([keyf] (key-cmp keyf compare))
+  ([keyf cmp] (fn comparator [x y]
+                (let [c (cmp (keyf x) (keyf y))]
+                  (if (not= c 0)
+                    c
+                    (cmp x y))))))
