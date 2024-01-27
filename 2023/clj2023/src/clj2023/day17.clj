@@ -4,7 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [flow-storm.api :as fs-api]
-            [clojure.data.priority-map :as priority-map]))
+            [clojure.data.priority-map :refer [priority-map]]))
 
 (def test-data
   "2413432311323
@@ -49,48 +49,69 @@
   (neighbors td '([5 0] [4 0] [3 0] [3 1] [2 1] [1 1] [1 0] [0 0]))
   (neighbors td '([1 4] [1 3] [1 2] [0 2] [0 1] [0 0])))
 
-(defn explore-1 [grid [seen paths]]
-  (swap! a conj (count paths))
-  (let [[[wt _] path :as p] (first paths)
-        rst (disj paths p)]
-    [(conj seen (first path))
-     (->> (neighbors grid path)
-          (remove seen)
-          (map #(vector [(+ wt (get-in grid %)) (rand)]
-                        (conj path %)))
-          (into rst))]))
+(defn explore-1 [grid seen paths]
+  (let [[path wt] (first paths)
+        rst (pop paths)
+        nbr-wts (->> (neighbors grid path)
+                     (map #(vector ^{:path (conj path %)} % 
+                                   (+ wt (get-in grid %))))
+                     (filter #(< (second %) (seen (first %) Integer/MAX_VALUE))))]
+    [(into seen nbr-wts)
+     (into rst (for [[c w] nbr-wts]
+                 [(conj path c) w]))]))
 
 (defn explore [grid start]
-  (iterate (partial explore-1 grid)
-           [#{} (sorted-set-by (key-cmp first) [[0 (rand)]
-                                                (list start)])]))
+  (iterate (partial apply explore-1 grid) 
+           [{[0 0] 0} (priority-map (list start) 0)]))
 
 (defn shortest-path [grid start end]
   (->> (explore grid start)
        (drop-while #(->> (second %)  ;paths (not seen)
                          first       ;first path
-                         second      ;path (not wt)
+                         key         ;path (not wt)
                          first       ;p (most recent cell)
                          (not= end)))
        first   ;first matching
        second  ;paths (not seen)
        first   ;first path
-       first   ;heat loss + tiebreaker
-       first))
+       val     ;heat loss
+       ))
 
 (defn render-path [grid path]
   (m/pm (reduce #(assoc-in %1 %2 "o") grid path)))
 
 (comment
+  (->> (shortest-path td [0 0] [12 12]) first (render-path td))
   (time (shortest-path td [0 0] [12 12]))
-  
+  ;; I've got some kind of correctness issue :P 
+  ;; The optimization of not visiting a space again once you've found the shortest path to it is
+  ;; incorrect. The shortest path is path-dependent because of the
+  ;; no-more-than-3-steps-in-the-same-dir thing, getting to a space "first" might deprive you of a
+  ;; shorter global path if it would be faster to take an extra step in the same direction later
+  ;; Should `seen` only get added to when we visit?
+  ;; Should we not cull paths using the optimization at all?
+  ;; Other slns take all the steps in a dir at once
+  ;; It seems like that gets around the issue somehow?
+  ;; In one sln, rather than tracking the best heat per space, it filters on the lowest heat
+  ;; CURRENTLY BEING EXPLORED for a space, AND a new heat must be lower than the best previously
+  ;; found heat for that space, but this doesn't include the current stretch.
+  ;; I'm dubious of that optimization, maybe try at first without it?
+  ;; Maybe I'm not understanding the problem correctly? That would surely cause the aforementioned
+  ;; path-dependency issue, right?
+
+  (m/pm td)
+  (render-path td p)
+  (->> '([0 4] [1 4] [1 3] [1 2] [0 2] [0 1] [0 0])
+       butlast
+       (map #(get-in td %))
+       (apply +))
+
   (let [grid (parse (slurp (io/resource "day17.txt")))]
     (time (shortest-path grid [0 0] [30 30] #_[(count grid) (count (grid 0))])))
   )
 
 (comment
-  (fs-api/local-connect)
-  (fs-api/instrument-namespaces-clj #{(str *ns*)})
+  (fs-api/local-connect {:theme :dark})
   (require '[flow-storm.runtime.indexes.api :as index-api])
   (index-api/select-thread nil 21)
   (let [[flow-id thread-id] @index-api/selected-thread
@@ -105,7 +126,8 @@
                   second  ;path, not weight
                   first   ;current cell
                   (= [1 4]))
-            frames)))
+            frames))
+  )
 
 (comment
   (require '[clj-async-profiler.core :as prof])
