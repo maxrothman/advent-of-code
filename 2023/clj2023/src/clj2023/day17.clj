@@ -1,10 +1,10 @@
 (ns clj2023.day17
   (:require [clj2023.util :refer [>>-> key-cmp spy]]
             [clojure.core.matrix :as m]
-            [clojure.java.io :as io]
             [clojure.string :as str]
             [flow-storm.api :as fs-api]
-            [clojure.data.priority-map :refer [priority-map]]))
+            [clojure.java.io :as io]
+            [clojure.data.priority-map :refer [priority-map-keyfn]]))
 
 (def test-data
   "2413432311323
@@ -27,91 +27,67 @@
        (mapv #(str/split % #""))
        (m/emap parse-long)))
 
-(defn neighbors [grid [cur :as path]]
-  (let [prev-steps-in-dir (->> (partition 2 1 path)
-                               (map #(apply mapv - %))
-                               (partition-by identity)
-                               first
-                               ;; Don't run the rest of the path after 3, it doesn't matter after that
-                               (take 3))]
-    (->> (for [dir [[1 0] [-1 0] [0 1] [0 -1]]]
-           (mapv + cur dir))
-         (filter #(get-in grid %))  ;Don't go outside the grid
-         (>>-> cond->>              ;No more than 2 steps in one direction
-               (<= 3 (count prev-steps-in-dir))
-               (remove (->> prev-steps-in-dir first (mapv + cur) (conj #{})))))))
+(defn neighbors [grid [{:keys [coord dir steps path] :as pp} {:keys [wt]}]]
+  (for [dir' [[1 0] [-1 0] [0 1] [0 -1]]
+        :when (not= dir' (mapv - dir))  ;don't go backwards
+        :let [coord' (mapv + coord dir')]
+        :when (get-in grid coord')  ;don't go outside the grid
+        :let [steps' (if (= dir dir') (inc steps) 1)]
+        :when (<= steps' 3)]
+    [{:coord coord', :dir dir', :steps steps', :wt (+ wt (get-in grid coord')), :path (hash [coord' path])}
+     {:wt (+ wt (get-in grid coord'))}]))
 
 (comment
   (m/pm @(def td (parse test-data)))
-  (neighbors td '([0 0]))
-  (neighbors td '([0 1] [0 0]))
-  (neighbors td '([0 2] [0 1] [0 0]))
-  (neighbors td '([5 0] [4 0] [3 0] [3 1] [2 1] [1 1] [1 0] [0 0]))
-  (neighbors td '([1 4] [1 3] [1 2] [0 2] [0 1] [0 0])))
+  (neighbors td [{:coord [0 0] :dir [1 0]} {:wt 0 :steps 0}])
+  ;; => ([1 0] [0 1])
+  (neighbors td [{:coord [0 1] :dir [0 1]} {:wt 4 :steps 1}])
+  ;; => ([1 1] [0 2])
+  (neighbors td [{:coord [0 2] :dir [0 1]} {:wt 5 :steps 2}])
+  ;; => ([1 2] [0 3])
+  (neighbors td [{:coord [5 0] :dir [1 0]} {:wt 100 :steps 2}])
+  ;; => ([6 0] [5 1])
+  (neighbors td [{:coord [1 4] :dir [0 1]} {:wt 100 :steps 2}])
+  ;; => ([2 4] [0 4] [1 5])
+  (neighbors td [{:coord [3 0] :dir [1 0]} {:wt 100 :steps 3}])
+  ;; => ([{:coord [3 1], :dir [0 1]} {:wt 104, :steps 0}]) 
+  )
 
-(defn explore-1 [grid seen paths]
-  (let [[path wt] (first paths)
-        rst (pop paths)
-        nbr-wts (->> (neighbors grid path)
-                     (map #(vector ^{:path (conj path %)} % 
-                                   (+ wt (get-in grid %))))
-                     (filter #(< (second %) (seen (first %) Integer/MAX_VALUE))))]
-    [(into seen nbr-wts)
-     (into rst (for [[c w] nbr-wts]
-                 [(conj path c) w]))]))
-
-(defn explore [grid start]
-  (iterate (partial apply explore-1 grid) 
-           [{[0 0] 0} (priority-map (list start) 0)]))
+(defn explore-1 [grid [seen paths]]
+  (let [[{:keys [coord]} _ :as p] (first paths)
+        rst (pop paths)]
+    [(conj seen coord)
+     (into rst
+           (remove (comp seen :coord first))
+           (neighbors grid p))]))
 
 (defn shortest-path [grid start end]
-  (->> (explore grid start)
-       (drop-while #(->> (second %)  ;paths (not seen)
-                         first       ;first path
-                         key         ;path (not wt)
-                         first       ;p (most recent cell)
-                         (not= end)))
-       first   ;first matching
-       second  ;paths (not seen)
-       first   ;first path
-       val     ;heat loss
-       ))
+  (loop [[seen paths] [#{}
+                       (priority-map-keyfn :wt
+                        ^{:p (list start)} {:coord start, :dir [1 0], :steps 0, :wt 0, :path (hash start)} {:wt 0}
+                        ^{:p (list start)} {:coord start, :dir [0 1], :steps 0, :wt 0, :path (hash start)} {:wt 0})]]
+    (if (= end (:coord (key (first paths))))
+      (do (prn (:p (meta (key (first paths)))))
+          (:wt (val (first paths))))
+      (recur (explore-1 grid [seen paths])))))
 
 (defn render-path [grid path]
   (m/pm (reduce #(assoc-in %1 %2 "o") grid path)))
 
 (comment
-  (->> (shortest-path td [0 0] [12 12]) first (render-path td))
   (time (shortest-path td [0 0] [12 12]))
-  ;; I've got some kind of correctness issue :P 
-  ;; The optimization of not visiting a space again once you've found the shortest path to it is
-  ;; incorrect. The shortest path is path-dependent because of the
-  ;; no-more-than-3-steps-in-the-same-dir thing, getting to a space "first" might deprive you of a
-  ;; shorter global path if it would be faster to take an extra step in the same direction later
-  ;; Should `seen` only get added to when we visit?
-  ;; Should we not cull paths using the optimization at all?
-  ;; Other slns take all the steps in a dir at once
-  ;; It seems like that gets around the issue somehow?
-  ;; In one sln, rather than tracking the best heat per space, it filters on the lowest heat
-  ;; CURRENTLY BEING EXPLORED for a space, AND a new heat must be lower than the best previously
-  ;; found heat for that space, but this doesn't include the current stretch.
-  ;; I'm dubious of that optimization, maybe try at first without it?
-  ;; Maybe I'm not understanding the problem correctly? That would surely cause the aforementioned
-  ;; path-dependency issue, right?
 
-  (m/pm td)
-  (render-path td p)
-  (->> '([0 4] [1 4] [1 3] [1 2] [0 2] [0 1] [0 0])
-       butlast
-       (map #(get-in td %))
-       (apply +))
+  (render-path td '([12 12] [12 11] [11 11] [10 11] [9 11] [9 12] [8 12] [7 12] [7 11] [6 11] [5 11] [5 10] [4 10] [3 10] [3 9] [2 9] [2 8] [1 8] [0 8] [0 7] [0 6] [1 6] [1 5] [1 4] [1 3] [0 3] [0 2] [0 1] [0 0]))
 
   (let [grid (parse (slurp (io/resource "day17.txt")))]
-    (time (shortest-path grid [0 0] [30 30] #_[(count grid) (count (grid 0))])))
+    (time (shortest-path grid [0 0] [(dec (count grid)) (dec (count (grid 0)))])))
+  ;; 714 is wrong somehow, it's too high. I give up.
+  ;; If I add the path to the key, it's too slow. wtf.
+  ;; It's 4x slower with paths in the key, probably because I need more culling or A* or something
   )
 
 (comment
-  (fs-api/local-connect {:theme :dark})
+  (fs-api/local-connect {:theme :dark}) 
   (require '[flow-storm.runtime.indexes.api :as index-api])
   (index-api/select-thread nil 21)
   (let [[flow-id thread-id] @index-api/selected-thread
@@ -134,7 +110,6 @@
 
   ;; Profile the following expression:
   (prof/profile (shortest-path (parse (slurp (io/resource "day17.txt"))) [0 0] [25 25]))
-  ;; "Elapsed time: 5539.046281 msecs"
 
   ;; The resulting flamegraph will be stored in /tmp/clj-async-profiler/results/
   ;; You can view the HTML file directly from there or start a local web UI:
