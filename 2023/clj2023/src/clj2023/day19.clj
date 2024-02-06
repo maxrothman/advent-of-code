@@ -1,8 +1,9 @@
 (ns clj2023.day19
-  (:require [clj2023.util :refer [spyf until]]
+  (:require [clj2023.util :refer [spy until]]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [helins.interval.set :as iset]))
+            [helins.interval.set :as iset]
+            [clj2023.interval-set :as iset2]))
 
 (defn parse-wflw [line]
   (let [[nme rules-raw] (rest (re-matches #"(\w+)\{([^}]+)\}" line))
@@ -84,47 +85,65 @@ hdj{m>838:A,pv}
   (let [[wflws _] (str/split raw #"\n\n")]
     (into {} (map parse-wflw2 (str/split-lines wflws)))))
 
-(defn union [set1 set2]
-  (reduce (partial apply iset/mark) set1 set2))
-
+(def rangemin 1)
 (def rangemax 4000)
 
-(defn go-1' [state {:keys [field op n dest]}]
-  (let [dest-k (if (#{"A" "R"} dest) :finished :processing)
-        mark-safe (fnil iset/mark iset/empty)]
+(defn do-1-step [{:keys [itm] :as state} {:keys [field op n dest]}]
+  (let [route (fn [state dest itm']
+                (case dest
+                  "A" (update state :accepted conj itm')
+                  "R" state  ;drop it
+                  (update state :processing conj [dest itm'])))]
     (case op
       ">" (-> state
-              (update-in [:itm field] iset/erase (inc n) rangemax)
-              (update-in [dest-k dest field] mark-safe (inc n) rangemax))
+              (update-in [:itm field] iset2/erase (inc n) rangemax)
+              (route dest (update itm field iset2/erase rangemin n)))
       "<" (-> state
-              (update-in [:itm field] iset/erase 0 (dec n))
-              (update-in [dest-k dest field] mark-safe 0 (dec n)))
-      :default (-> (assoc state :itm nil)
-                   (update-in [dest-k dest]
-                              (partial merge-with union) (:itm state))))))
+              (update-in [:itm field] iset2/erase rangemin (dec n))
+              (route dest (update itm field iset2/erase n rangemax)))
+      (-> (dissoc state :itm)
+          (route dest itm)))))
 
-;; This isn't quite right
-;; The goal is "how many items in A", where "item" is a combination of x m a s
-;; A and R need to account for x m a s
-;; Putting ranges under x m a s is a kind of "and" operation
-;; e.g. {x [8 9] m [0 1] a [2 3] s [5 6]} is this set of items:
-;; {x 8 m 0 a 2 s 5}
-;; {x 9 m 0 a 2 s 5}
-;; {x 8 m 1 a 2 s 5}
-;; {x 9 m 1 a 2 s 5}
-;; ...
-;; Is it safe to merge items when adding them to a name?
-;; {x [9 10] m [5 6]}, {x [1 2] m [3 4]}
-;; Each 4 itms
-;; Merged implies {x 1 m 5} is accepted, which is false
-;; So no?
+(comment
+  (iset/erase (iset/mark iset/empty 2876 2876) 1351 4000)
+  (iset/erase (iset/mark iset/empty 1 1) 0 3)
+  (imap/erase (imap/mark imap/empty 1 1 :hi) 0 3 :hi)
+  
+  (first (disj (itree/interval-set [[1 2]]) [1 2]))
+  (first (itree/interval-set)) 
+  (conj (itree/interval-set [[1 2]]) [1 3])
+  )
+;; Neither library does the right thing. itree doesn't merge sets and can't conj/disj partial
+;; intervals. iset has bugs where adjacent intervals are merged if they're added in the wrong order,
+;; and 0-length intervals can't be removed.
+;; Could wrap
+;; https://guava.dev/releases/23.0/api/docs/com/google/common/collect/ImmutableRangeSet.html
+;; But for them "immutable" means "can't be modified at all no exceptions" so there's no mark/erase
+;; ops. Could wrap their mutable TreeRangeSet, if it actually works the way I need it to. Will my
+;; code work with mutable sets?
 
-;; Ok, I think the approach is that :finished and :processing should be
-;; {name {x|m|a|s -> iset}}
-;; NOT SURE ^
-;; No, def not. Either gotta think of it as a 4-d coordinate space and use something like an R-tree,
-;; or have :finished be {A|R (list {x|m|a|s -> iset})}, and :processing be {name (list {x|m|a|s ->
-;; iset}})
+
+
+(defn do-1-itm [wflws state [wflw itm]]
+  (reduce do-1-step (assoc state :itm itm) (wflws wflw)))
+
+(defn do-all [wflws]
+  (until (comp empty? :processing) 
+         #(reduce (partial do-1-itm wflws)
+                  (assoc % :processing '())
+                  (:processing %))
+         {:accepted '() ;(list iset)
+          :processing
+          (list ["in" (zipmap [:x :m :a :s]
+                              (repeat (iset2/range-set [rangemin rangemax])))])}))
+
+(defn combos [itm]
+  (->> (vals itm)
+       (map #(->> (iset2/to-seq %)
+                  (map (comp inc abs (partial apply -)))
+                  (apply +))) 
+       (apply *)))
+
 ;; ITEMS CANNOT OVERLAP
 ;; Proof:
 ;; - For 2 items to intersect, all of their dimensions must intersect. If any dimension does
@@ -137,10 +156,6 @@ hdj{m>838:A,pv}
 
 ;; Do the entire processing map at once. In that case does it need to be a map?
 ;; Finished might not need to be a map either, I can just drop the Rs
-(def go-init
-  {:finished {"A" iset/empty, "R" iset/empty}
-   :processing {}
-   :itm (zipmap [:x :m :a :s] (repeat (iset/mark iset/empty 0 rangemax)))})
 
 (comment
   @(def test-data
@@ -162,7 +177,16 @@ hdj{m>838:A,pv}
 {x=2461,m=1339,a=466,s=291}
 {x=2127,m=1623,a=2188,s=1013}"))
 
-  (reduce go-1
-          go-init
-          (test-data "in"))
+  (->> (do-all test-data)
+       :accepted
+       (map combos)
+       (apply +))
+  ;; => 167409079868000
+  ;; Correct! Got a different answer with iset, probably due to a bug
+  
+  (->> (parse2 (slurp (io/resource "day19.txt")))
+       do-all
+       :accepted
+       (map combos)
+       (apply +))
   )
