@@ -1,6 +1,7 @@
 (ns clj2023.day20
-  (:require [clj2023.util :refer [spy spyf until]]
+  (:require [clj2023.util :refer [until]]
             [clojure.java.io :as io]
+            [clojure.math.numeric-tower :refer [lcm]]
             [clojure.string :as str]
             [medley.core :refer [map-kv-vals queue]]))
 
@@ -97,22 +98,30 @@
 
 (defn pt2 [data]
   (->> (iterate (comp (partial press-button
-                               (fn tracer [state pulses]
-                                 #_(when-let [found (first (filter #(= (:dst %) "rx") pulses))]
-                                   (prn found)
-                                   #_(throw (ex-info "first" found)))
-                                 (update state :lo-to-rx +
-                                         (count (filter #(and (= "rx" (:dst %))
-                                                              (= :lo (:typ %)))
-                                                        pulses)))))
-                      #(assoc % :lo-to-rx 0))
-                {:modules data})
-       (take-while #(not= 1 (:lo-to-rx %)))
-       count))
+                               (fn [state pulses]
+                                 (->> (filter #(and (get (get-in state [:trace :watching]) (:src %))
+                                                    (= :hi (:typ %)))
+                                              pulses)
+                                      (map #(vector (:src %) (get-in state [:trace :presses])))
+                                      (into {})
+                                      ;; Merge in the existing state second so the shortest cycle is
+                                      ;; always kept
+                                      (update-in state [:trace :cycle] #(merge %2 %1)))))
+                      #(update-in % [:trace :presses] inc))
+                {:modules data
+                 :trace {:watching #{"jf" "sh" "mz" "bh"}
+                         :presses 0
+                         :cycle {}}})
+       (drop-while #(> 4 (count (get-in % [:trace :cycle]))))
+       first
+       :trace))
 
 (comment
-  (pt2 (parse (slurp (io/resource "day20.txt"))))
-  ;; Too slow
+  (def cycles (pt2 (parse (slurp (io/resource "day20.txt")))))
+  (->> cycles
+       :cycle
+       vals
+       (reduce lcm))
   
   ;; Mermaid
   (->> (for [[src module] (parse (slurp (io/resource "day20.txt")))
@@ -125,4 +134,9 @@
        (filter #(= :conj (:typ %)))
        (map :name)
        (str/join ", "))
+  (def state
+    (-> (parse (slurp (io/resource "day20.txt")))
+        (merge {:trace {:watching #{"jf" "sh" "mz" "bh"}
+                        :presses 0
+                        :cycle {}}})))
   )
