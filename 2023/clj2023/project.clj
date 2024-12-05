@@ -6,8 +6,8 @@
   :dependencies [[com.clojure-goes-fast/clj-async-profiler "1.1.1"]
                  [com.cnuernber/charred "1.033"]
                  [com.dean/interval-tree "0.1.2"]
-                 [com.github.flow-storm/clojure "1.11.1-19"]
-                 [com.github.flow-storm/flow-storm-dbg "3.12.3-SNAPSHOT"]
+                 [com.github.flow-storm/clojure "1.12.0"]
+                 [com.github.flow-storm/flow-storm-dbg "3.17.4"]
                  [com.google.guava/guava "33.0.0-jre"]  ;For their interval set
                  [dev.weavejester/medley "1.7.0"]
                  [dom-top "1.0.9"]
@@ -24,5 +24,5 @@
   :exclusions [org.clojure/clojure]
   
   :jvm-opts ["-Djdk.attach.allowAttachSelf"  ;For clj-async-profiler
-             "-Dclojure.storm.instrumentOnlyPrefixes=clj2023."
-             "-Dclojure.storm.instrumentEnable=false"])
+             "-Dclojure.storm.instrumentOnlyPrefixes=clj2023.,helins.interval."
+             "-Dclojure.storm.instrumentEnable=true"])

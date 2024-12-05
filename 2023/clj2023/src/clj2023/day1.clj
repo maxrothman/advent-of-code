@@ -1,6 +1,9 @@
 (ns clj2023.day1
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.math.combinatorics :as comb]
+            [helins.interval.set :as iset]
+            [clojure.reflect :as reflect]))
 
 (defn parse []
   (->> (io/resource "day1.txt")
